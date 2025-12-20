@@ -1,0 +1,44 @@
+#!/usr/bin/env bash
+# gitmon - Git Repository Monitor TUI
+# A terminal user interface for monitoring multiple git repositories
+
+set -e
+
+# Try to run gitmon if it's installed
+if command -v gitmon &> /dev/null && [ "$0" != "$(command -v gitmon)" ]; then
+    exec gitmon "$@"
+fi
+
+# Otherwise, try to run from source (development mode)
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
+
+if [ -f "$PROJECT_ROOT/lib/gitmon/__main__.py" ]; then
+    # Create venv if it doesn't exist
+    if [ ! -d "$PROJECT_ROOT/venv" ]; then
+        echo "Initializing gitmon..." >&2
+        python3 -m venv --copies "$PROJECT_ROOT/venv"
+    fi
+
+    # Activate venv if not already in one
+    if [ -z "$VIRTUAL_ENV" ]; then
+        source "$PROJECT_ROOT/venv/bin/activate"
+    fi
+
+    # Check if dependencies are installed by trying to import textual
+    if ! python -c "import textual" &> /dev/null; then
+        echo "Setting up dependencies..." >&2
+        pip install -q -e "$PROJECT_ROOT"
+    fi
+
+    exec python -m gitmon "$@"
+fi
+
+# If we get here, gitmon is not installed and not in dev mode
+echo "Error: gitmon is not installed and cannot be run from source" >&2
+echo "" >&2
+echo "To install with pipx:" >&2
+echo "  pipx install $PROJECT_ROOT" >&2
+echo "" >&2
+echo "Or run from the gitmon directory to auto-setup dev environment" >&2
+exit 1

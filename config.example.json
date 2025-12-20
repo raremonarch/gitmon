@@ -1,0 +1,9 @@
+{
+  "watch_directories": [
+    "~/code",
+    "~/projects",
+    "/path/to/other/repos"
+  ],
+  "refresh_interval": 5,
+  "max_depth": 3
+}
