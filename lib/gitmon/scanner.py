@@ -14,9 +14,10 @@ class RepoInfo:
     path: Path
     remote_owner: str
     current_branch: str
-    status: str  # "clean" or "changes"
+    status: str  # "clean", "stashed", "changes", or "error"
     ahead: int = 0
     behind: int = 0
+    stash_count: int = 0
     error: Optional[str] = None
 
 

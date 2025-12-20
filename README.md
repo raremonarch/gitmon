@@ -101,7 +101,8 @@ GitMon displays the following information for each repository:
 - **Owner**: Extracted from remote URL (owner/organization)
 - **Branch**: Current branch name
 - **Status**:
-  - ✓ clean - No uncommitted changes
+  - ○ clean - No uncommitted changes and no stashes
+  - ◐ stashed - Clean working directory but has stashed changes
   - ● changes - Uncommitted changes present
   - ✗ error - Error accessing repository
 - **Tracking**: Commits ahead (↑) and behind (↓) remote

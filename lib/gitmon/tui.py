@@ -89,7 +89,7 @@ class GitMonApp(App):
 
         # Setup the data table
         table = self.query_one(DataTable)
-        table.cursor_type = "row"
+        table.cursor_type = "none"
         table.zebra_stripes = True
 
         # Add columns
@@ -113,9 +113,6 @@ class GitMonApp(App):
         # Update info bar
         info_bar.update(f"Scanning repositories... (Last refresh: {self._get_timestamp()})")
 
-        # Save current cursor position
-        current_cursor = table.cursor_row if table.row_count > 0 else 0
-
         # Scan repositories
         self.repos = self.scanner.scan_all()
 
@@ -124,7 +121,9 @@ class GitMonApp(App):
         for repo in self.repos:
             # Format status with color
             if repo.status == "clean":
-                status = Text("✓ clean", style="green")
+                status = Text("○ clean", style="green")
+            elif repo.status == "stashed":
+                status = Text("◐ stashed", style="blue")
             elif repo.status == "changes":
                 status = Text("● changes", style="yellow")
             else:
@@ -151,20 +150,18 @@ class GitMonApp(App):
                 tracking
             )
 
-        # Restore cursor position
-        if table.row_count > 0:
-            # Ensure cursor position is within bounds
-            restored_cursor = min(current_cursor, table.row_count - 1)
-            table.move_cursor(row=restored_cursor)
-
         # Update info bar with stats
         clean_count = sum(1 for r in self.repos if r.status == "clean")
+        stashed_count = sum(1 for r in self.repos if r.status == "stashed")
         changes_count = sum(1 for r in self.repos if r.status == "changes")
         error_count = sum(1 for r in self.repos if r.status == "error")
 
         stats = f"Repositories: {len(self.repos)} | "
-        stats += f"Clean: {clean_count} | "
-        stats += f"Changes: {changes_count}"
+        stats += f"Clean: {clean_count}"
+        if stashed_count > 0:
+            stats += f" | Stashed: {stashed_count}"
+        if changes_count > 0:
+            stats += f" | Changes: {changes_count}"
         if error_count > 0:
             stats += f" | Errors: {error_count}"
 
