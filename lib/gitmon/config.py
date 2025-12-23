@@ -1,9 +1,9 @@
 """Configuration file handling for gitmon."""
 
+import json
 import os
 from pathlib import Path
-from typing import List
-import json
+from typing import Any, Optional, cast
 
 
 class Config:
@@ -11,14 +11,14 @@ class Config:
 
     DEFAULT_CONFIG_PATH = Path.home() / ".config" / "gitmon" / "config.json"
 
-    def __init__(self, config_path: Path = None):
+    def __init__(self, config_path: Optional[Path] = None):
         """Initialize configuration handler.
 
         Args:
             config_path: Path to configuration file. Defaults to ~/.config/gitmon/config.json
         """
         self.config_path = config_path or self.DEFAULT_CONFIG_PATH
-        self.watch_directories: List[str] = []
+        self.watch_directories: list[str] = []
         self.refresh_interval: int = 5
         self.max_depth: int = 3
         self.load()
@@ -30,19 +30,19 @@ class Config:
             return
 
         try:
-            with open(self.config_path, 'r') as f:
-                data = json.load(f)
-                self.watch_directories = data.get('watch_directories', [])
-                self.refresh_interval = data.get('refresh_interval', 5)
-                self.max_depth = data.get('max_depth', 3)
-        except (json.JSONDecodeError, IOError) as e:
-            raise ValueError(f"Error loading config from {self.config_path}: {e}")
+            with open(self.config_path) as f:
+                data: dict[str, Any] = json.load(f)
+                self.watch_directories = cast("list[str]", data.get('watch_directories', []))
+                self.refresh_interval = cast("int", data.get('refresh_interval', 5))
+                self.max_depth = cast("int", data.get('max_depth', 3))
+        except (OSError, json.JSONDecodeError) as e:
+            raise ValueError(f"Error loading config from {self.config_path}: {e}") from e
 
     def _create_default_config(self) -> None:
         """Create default configuration file."""
         self.config_path.parent.mkdir(parents=True, exist_ok=True)
 
-        default_config = {
+        default_config: dict[str, Any] = {
             "watch_directories": [
                 str(Path.home() / "code"),
             ],
@@ -53,9 +53,9 @@ class Config:
         with open(self.config_path, 'w') as f:
             json.dump(default_config, f, indent=2)
 
-        self.watch_directories = default_config['watch_directories']
-        self.refresh_interval = default_config['refresh_interval']
-        self.max_depth = default_config['max_depth']
+        self.watch_directories = cast("list[str]", default_config['watch_directories'])
+        self.refresh_interval = cast("int", default_config['refresh_interval'])
+        self.max_depth = cast("int", default_config['max_depth'])
 
     def save(self) -> None:
         """Save configuration to file."""
@@ -70,7 +70,7 @@ class Config:
         with open(self.config_path, 'w') as f:
             json.dump(data, f, indent=2)
 
-    def get_expanded_directories(self) -> List[Path]:
+    def get_expanded_directories(self) -> list[Path]:
         """Get watch directories with environment variables expanded.
 
         Returns:

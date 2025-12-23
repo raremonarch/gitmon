@@ -1,9 +1,9 @@
 """Git repository scanner and information extractor."""
 
 import subprocess
-from pathlib import Path
-from typing import List, Optional
 from dataclasses import dataclass
+from pathlib import Path
+from typing import Optional
 
 
 @dataclass
@@ -25,7 +25,7 @@ class RepoInfo:
 class GitScanner:
     """Scanner for finding and analyzing git repositories."""
 
-    def __init__(self, watch_directories: List[Path], max_depth: int = 3):
+    def __init__(self, watch_directories: list[Path], max_depth: int = 3):
         """Initialize scanner with directories to watch.
 
         Args:
@@ -35,7 +35,7 @@ class GitScanner:
         self.watch_directories = watch_directories
         self.max_depth = max_depth
 
-    def find_repositories(self) -> List[Path]:
+    def find_repositories(self) -> list[Path]:
         """Find all git repositories in watch directories.
 
         Recursively searches up to max_depth levels deep. When a git repository
@@ -44,7 +44,7 @@ class GitScanner:
         Returns:
             List of paths to git repositories
         """
-        repos = []
+        repos: list[Path] = []
         for directory in self.watch_directories:
             if not directory.exists():
                 continue
@@ -54,7 +54,7 @@ class GitScanner:
 
         return sorted(repos, key=lambda p: p.name.lower())
 
-    def _search_directory(self, directory: Path, repos: List[Path], current_depth: int) -> None:
+    def _search_directory(self, directory: Path, repos: list[Path], current_depth: int) -> None:
         """Recursively search for git repositories with early stopping.
 
         Args:
@@ -281,7 +281,7 @@ class GitScanner:
 
         return 0, 0
 
-    def scan_all(self) -> List[RepoInfo]:
+    def scan_all(self) -> list[RepoInfo]:
         """Scan all repositories and return their information.
 
         Returns:

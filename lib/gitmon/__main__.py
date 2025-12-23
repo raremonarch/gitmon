@@ -1,14 +1,19 @@
 """Main entry point for gitmon application."""
 
-import sys
 import argparse
+import sys
 from pathlib import Path
+
+try:
+    from importlib.metadata import version
+except ImportError:
+    from importlib_metadata import version  # type: ignore
 
 from .config import Config
 from .tui import run_app
 
 
-def main():
+def main() -> None:
     """Main entry point for gitmon."""
     parser = argparse.ArgumentParser(
         description="GitMon - Git Repository Monitor TUI",
@@ -39,7 +44,7 @@ The config file should contain:
     parser.add_argument(
         "--version",
         action="version",
-        version="gitmon 0.1.0"
+        version=f"gitmon {version('gitmon')}"
     )
 
     args = parser.parse_args()

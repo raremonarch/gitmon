@@ -1,18 +1,20 @@
 """Textual TUI interface for gitmon."""
 
+from pathlib import Path
+from typing import Any, Optional
+
+from rich.text import Text
 from textual.app import App, ComposeResult
-from textual.containers import Container, Vertical
-from textual.widgets import Header, Footer, DataTable, Static
 from textual.binding import Binding
 from textual.events import MouseMove
 from textual.message import Message
-from rich.text import Text
+from textual.widgets import DataTable, Footer, Header, Static
 
 from .config import Config
 from .scanner import GitScanner, RepoInfo
 
 
-class HoverableDataTable(DataTable):
+class HoverableDataTable(DataTable[Any]):
     """DataTable with mouse hover support."""
 
     class RowHovered(Message):
@@ -35,67 +37,15 @@ class HoverableDataTable(DataTable):
         except Exception:
             self.post_message(self.RowHovered(row_index=-1))
 
-    def on_leave(self, _event) -> None:
+    def on_leave(self, _event: Any) -> None:
         """Handle mouse leaving the table."""
         self.post_message(self.RowHovered(row_index=-1))
 
 
-class GitMonApp(App):
+class GitMonApp(App[None]):
     """Git Repository Monitor TUI Application."""
 
-    CSS = """
-    Screen {
-        background: $surface;
-    }
-
-    Header {
-        background: $panel;
-    }
-
-    Footer {
-        background: $panel;
-    }
-
-    #info-bar {
-        height: 3;
-        background: $panel;
-        padding: 1;
-        color: $text;
-    }
-
-    #hover-info {
-        height: 3;
-        background: $panel;
-        padding: 0 1;
-        margin: 0;
-        color: white;
-        display: none;
-    }
-
-    DataTable {
-        height: 1fr;
-    }
-
-    .status-clean {
-        color: $success;
-    }
-
-    .status-changes {
-        color: $warning;
-    }
-
-    .status-error {
-        color: $error;
-    }
-
-    .branch {
-        color: $accent;
-    }
-
-    .owner {
-        color: $secondary;
-    }
-    """
+    CSS_PATH = Path(__file__).parent / "gitmon.tcss"
 
     BINDINGS = [
         Binding("r", "refresh", "Refresh", priority=True),
@@ -144,6 +94,14 @@ class GitMonApp(App):
         # Set up auto-refresh timer
         self.set_interval(self.config.refresh_interval, self.action_refresh)
 
+    def _get_sorted_repos(self) -> list[RepoInfo]:
+        """Get repositories sorted by owner then name.
+
+        Returns:
+            List of RepoInfo sorted alphabetically by owner (case-insensitive), then by name.
+        """
+        return sorted(self.repos, key=lambda r: (r.remote_owner.lower(), r.name.lower()))
+
     def action_refresh(self) -> None:
         """Refresh repository information."""
         table = self.query_one(DataTable)
@@ -158,9 +116,7 @@ class GitMonApp(App):
         self.repos = self.scanner.scan_all()
 
         # Sort repositories by owner then name
-        sorted_repos = sorted(
-            self.repos, key=lambda r: (r.remote_owner.lower(), r.name.lower())
-        )
+        sorted_repos = self._get_sorted_repos()
 
         # Clear and repopulate table
         table.clear()
@@ -222,9 +178,7 @@ class GitMonApp(App):
             return
 
         # Get the sorted repository list (same order as displayed)
-        sorted_repos = sorted(
-            self.repos, key=lambda r: (r.remote_owner.lower(), r.name.lower())
-        )
+        sorted_repos = self._get_sorted_repos()
         repo = sorted_repos[row_index]
 
         # Format hover information
@@ -253,8 +207,8 @@ class GitMonApp(App):
 
     def action_open_config(self) -> None:
         """Open configuration file in default editor."""
-        import subprocess
         import os
+        import subprocess
 
         editor = os.environ.get("EDITOR", "vim")
 
@@ -269,7 +223,7 @@ class GitMonApp(App):
         return datetime.now().strftime("%H:%M:%S")
 
 
-def run_app(config: Config = None) -> None:
+def run_app(config: Optional[Config] = None) -> None:
     """Run the gitmon TUI application.
 
     Args:

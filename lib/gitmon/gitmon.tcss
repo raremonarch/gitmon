@@ -1,0 +1,53 @@
+/* GitMon TUI Styles */
+
+Screen {
+    background: $surface;
+}
+
+Header {
+    background: $panel;
+}
+
+Footer {
+    background: $panel;
+}
+
+#info-bar {
+    height: 3;
+    background: $panel;
+    padding: 1;
+    color: $text;
+}
+
+#hover-info {
+    height: 3;
+    background: $panel;
+    padding: 0 1;
+    margin: 0;
+    color: white;
+    display: none;
+}
+
+DataTable {
+    height: 1fr;
+}
+
+.status-clean {
+    color: $success;
+}
+
+.status-changes {
+    color: $warning;
+}
+
+.status-error {
+    color: $error;
+}
+
+.branch {
+    color: $accent;
+}
+
+.owner {
+    color: $secondary;
+}
