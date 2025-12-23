@@ -10,6 +10,7 @@ except ImportError:
     from importlib_metadata import version  # type: ignore
 
 from .config import Config
+from .exceptions import ConfigurationError
 from .tui import run_app
 
 
@@ -59,7 +60,7 @@ The config file should contain:
     except KeyboardInterrupt:
         print("\nInterrupted by user", file=sys.stderr)
         sys.exit(130)
-    except ValueError as e:
+    except ConfigurationError as e:
         print(f"Configuration error: {e}", file=sys.stderr)
         sys.exit(1)
     except Exception as e:

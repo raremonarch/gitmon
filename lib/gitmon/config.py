@@ -5,6 +5,8 @@ import os
 from pathlib import Path
 from typing import Any, Optional, cast
 
+from .exceptions import ConfigurationError
+
 
 class Config:
     """Handle gitmon configuration."""
@@ -36,7 +38,31 @@ class Config:
                 self.refresh_interval = cast("int", data.get('refresh_interval', 5))
                 self.max_depth = cast("int", data.get('max_depth', 3))
         except (OSError, json.JSONDecodeError) as e:
-            raise ValueError(f"Error loading config from {self.config_path}: {e}") from e
+            raise ConfigurationError(
+                f"Error loading config from {self.config_path}: {e}"
+            ) from e
+
+        # Validate configuration values
+        self._validate()
+
+    def _validate(self) -> None:
+        """Validate configuration values.
+
+        Raises:
+            ConfigurationError: If any configuration value is invalid.
+        """
+        if not isinstance(self.watch_directories, list):
+            raise ConfigurationError(
+                f"watch_directories must be a list, got {type(self.watch_directories).__name__}"
+            )
+
+        if self.refresh_interval < 1:
+            raise ConfigurationError(
+                f"refresh_interval must be >= 1, got {self.refresh_interval}"
+            )
+
+        if self.max_depth < 1:
+            raise ConfigurationError(f"max_depth must be >= 1, got {self.max_depth}")
 
     def _create_default_config(self) -> None:
         """Create default configuration file."""
