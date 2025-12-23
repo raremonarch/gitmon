@@ -94,8 +94,6 @@ class GitScanner:
         Returns:
             RepoInfo object with repository details
         """
-        name = repo_path.name
-
         try:
             # Get current branch
             branch_result = subprocess.run(
@@ -107,7 +105,7 @@ class GitScanner:
             )
             current_branch = branch_result.stdout.strip() or "detached HEAD"
 
-            # Get remote URL and extract owner
+            # Get remote URL and extract owner and repo name
             remote_result = subprocess.run(
                 ["git", "remote", "get-url", "origin"],
                 cwd=repo_path,
@@ -117,6 +115,7 @@ class GitScanner:
             )
             remote_url = remote_result.stdout.strip()
             remote_owner = self._extract_owner(remote_url)
+            name = self._extract_repo_name(remote_url) or repo_path.name
 
             # Check for changes
             status_result = subprocess.run(
@@ -193,6 +192,38 @@ class GitScanner:
 
         # Handle local paths or other formats
         return remote_url.split("/")[0] if "/" in remote_url else "local"
+
+    def _extract_repo_name(self, remote_url: str) -> str:
+        """Extract repository name from git remote URL.
+
+        Args:
+            remote_url: Git remote URL
+
+        Returns:
+            Repository name or empty string if unavailable
+        """
+        if not remote_url:
+            return ""
+
+        # Handle SSH URLs: git@github.com:owner/repo.git
+        if remote_url.startswith("git@"):
+            parts = remote_url.split(":")
+            if len(parts) > 1:
+                path_parts = parts[1].split("/")
+                if len(path_parts) >= 2:
+                    # Remove .git extension if present
+                    repo_name = path_parts[-1]
+                    return repo_name.removesuffix(".git")
+
+        # Handle HTTPS URLs: https://github.com/owner/repo.git
+        if remote_url.startswith("http"):
+            parts = remote_url.rstrip("/").split("/")
+            if len(parts) >= 1:
+                # Remove .git extension if present
+                repo_name = parts[-1]
+                return repo_name.removesuffix(".git")
+
+        return ""
 
     def _get_remote_commit_message(self, repo_path: Path) -> str:
         """Get the most recent remote commit message.

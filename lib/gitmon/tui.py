@@ -125,7 +125,6 @@ class GitMonApp(App):
     def on_mount(self) -> None:
         """Initialize the application when mounted."""
         self.title = "GitMon - Git Repository Monitor"
-        self.sub_title = f"Watching {len(self.config.watch_directories)} directories"
 
         # Setup the data table
         table = self.query_one(DataTable)
@@ -202,7 +201,8 @@ class GitMonApp(App):
         changes_count = sum(1 for r in self.repos if r.status == "changes")
         error_count = sum(1 for r in self.repos if r.status == "error")
 
-        stats = f"Repositories: {len(self.repos)} | "
+        stats = f"Directories: {len(self.config.watch_directories)} | "
+        stats += f"Repositories: {len(self.repos)} | "
         stats += f"Clean: {clean_count}"
         if stashed_count > 0:
             stats += f" | Stashed: {stashed_count}"
