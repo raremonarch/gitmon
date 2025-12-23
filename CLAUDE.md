@@ -10,7 +10,7 @@ GitMon is a Python TUI (Text User Interface) application built with [Textual](ht
 
 ## Project Structure
 
-```
+```plaintext
 /home/david/code/gitmon/
 ├── bin/
 │   └── gitmon              # Bash wrapper script (auto-creates venv, installs deps)
@@ -29,26 +29,35 @@ GitMon is a Python TUI (Text User Interface) application built with [Textual](ht
 ## Key Files
 
 ### [lib/gitmon/tui.py](lib/gitmon/tui.py) - The TUI Interface
+
 **Most important file for UI changes.**
 
+- **HoverableDataTable class:** Custom DataTable widget with mouse hover support (lines 15-40)
 - **GitMonApp class:** Main Textual application
-- **DataTable structure:** 5 columns (Repository, Owner, Branch, Status, Tracking)
-- **Column definitions:** Lines 95-100
-- **Row rendering:** Lines 120-151 in `action_refresh()` method
-- **CSS styling:** Lines 16-59
+- **DataTable structure:** 4 columns (Repository, Branch, Status, Tracking)
+  - Repository column displays as `[owner] repo-name` (combined owner and repo)
+- **Column definitions:** Lines 137-140
+- **Row rendering:** Lines 148-198 in `action_refresh()` method
+- **Row sorting:** Alphabetically by owner then repo name (line 162)
+- **CSS styling:** Lines 46-89
+- **Mouse hover:** Displays remote commit message and local path on hover (lines 216-235)
 - **Key bindings:**
   - `r` - Manual refresh
   - `q` - Quit application
+  - `c` - Open configuration file
 - **Auto-refresh:** Configurable interval (default 5 seconds)
 
 ### [lib/gitmon/scanner.py](lib/gitmon/scanner.py) - Git Analysis
-- **RepoInfo dataclass:** Stores repository data (name, path, branch, status, ahead/behind counts, stash count)
+
+- **RepoInfo dataclass:** Stores repository data (name, path, branch, status, ahead/behind counts, stash count, remote commit message)
 - **GitScanner class:** Finds and analyzes repositories
   - `find_repositories()` - Recursive directory search for .git folders
   - `get_repo_info()` - Extracts branch, remote owner, git status
   - `_get_tracking_status()` - Parses `git rev-list --left-right --count HEAD...@{upstream}`
+  - `_get_remote_commit_message()` - Fetches most recent remote commit message (lines 197-221)
 
 ### [lib/gitmon/config.py](lib/gitmon/config.py) - Configuration
+
 - **Default location:** `~/.config/gitmon/config.json`
 - **Configuration options:**
   - `watch_directories` - Paths to scan for repos
@@ -65,26 +74,48 @@ GitMon is a Python TUI (Text User Interface) application built with [Textual](ht
 ## Column Rendering Details
 
 ### Status Column (Color-coded)
+
 - **Clean:** `○ clean` (green) - No changes, no stashes
 - **Stashed:** `◐ stashed` (blue) - Has stashed changes
 - **Changes:** `● changes` (yellow) - Uncommitted changes
 - **Error:** `✗ error` (red) - Git command failed
 
+### Repository Column (Combined Owner and Name)
+
+- **Format:** `[owner] repo-name`
+- **Example:** `[raremonarch] gitmon`
+- **Width:** 50 characters
+- **Sorting:** Alphabetically by owner (case-insensitive), then by repo name
+- **Note:** Square brackets are escaped to prevent Rich markup interpretation
+
 ### Tracking Column (Arrows and Numbers)
-- **Format:** `↑{ahead} ↓{behind}` or `—` (em dash if no tracking)
-- **Example:** `↑5 ↓3` means 5 commits ahead, 3 commits behind upstream
-- **Current width:** 15 characters
-- **Known issue:** Arrows and numbers can overlap with insufficient spacing
+
+- **Format:** `↑ {ahead}  ↓ {behind}` or empty string (if no tracking)
+- **Example:** `↑ 5  ↓ 3` means 5 commits ahead, 3 commits behind upstream
+- **Width:** 15 characters
+- **Spacing:** Space between arrow and number, double space between indicators
+
+### Mouse Hover Tooltip
+
+- **Trigger:** Mouse hover over any table row (mouse-only, no keyboard navigation)
+- **Display:** Panel appears below table showing:
+  - Line 1: `Last Remote Commit: {commit message}`
+  - Line 2: `Path: {local path}`
+- **Styling:** Panel background with white text, no border
+- **Implementation:** HoverableDataTable widget posts RowHovered messages on mouse movement
 
 ## Common Tasks
 
 ### Fixing Display Issues
+
 - **Location:** [lib/gitmon/tui.py](lib/gitmon/tui.py)
-- **Column widths:** Lines 95-100 (increase width parameter)
-- **Formatting:** Lines 132-142 (adjust spacing, use Rich Text objects)
-- **CSS styling:** Lines 16-59 (add color/padding classes)
+- **Column widths:** Lines 137-140 (increase width parameter)
+- **Formatting:** Lines 170-180 (adjust spacing, use Rich Text objects)
+- **CSS styling:** Lines 46-89 (add color/padding classes)
+- **Hover panel:** Lines 66-73 (adjust height, padding, colors)
 
 ### Testing Changes
+
 ```bash
 # Run from project root
 ./bin/gitmon
@@ -94,22 +125,44 @@ GitMon is a Python TUI (Text User Interface) application built with [Textual](ht
 ```
 
 ### Adding New Columns
-1. Add column to DataTable: Line ~100 in tui.py
-2. Add data field to RepoInfo dataclass in scanner.py
-3. Extract data in `get_repo_info()` method
-4. Format and add to table row: Lines ~145-151 in tui.py
+
+1. Add column to DataTable: Lines 137-140 in tui.py
+2. Add data field to RepoInfo dataclass in scanner.py (line 9)
+3. Extract data in `get_repo_info()` method (lines 87-147)
+4. Format and add to table row: Lines 183-191 in tui.py
+
+### Modifying Hover Tooltip Content
+
+1. Update `_show_repo_info()` method in tui.py (lines 216-235)
+2. Access repo data via sorted_repos list
+3. Format display text (currently 2 lines: commit message and path)
+4. Adjust hover panel height in CSS if adding more lines (line 67)
 
 ## Design Patterns
 
 ### Rich Text for Styling
+
 Status column uses Textual's `Text` objects with inline styles:
+
 ```python
 status = Text("● changes", style="yellow")
 ```
 
-The Tracking column currently uses plain strings - should be converted to Rich Text for better spacing control.
+Branch column also uses Rich Text with cyan styling. The Tracking column uses plain strings with spacing controlled by format strings.
+
+### Mouse Hover Pattern
+
+The HoverableDataTable extends DataTable to add mouse hover functionality:
+
+- Captures `on_mouse_move()` events within the table
+- Calculates row index from mouse Y position
+- Posts custom `RowHovered` message to parent app
+- Parent app handles message to show/hide hover panel
+
+This pattern allows mouse-only interaction without keyboard cursor or focus.
 
 ### Error Handling
+
 - Git commands wrapped in try/except
 - Failed repos shown with "error" status
 - Error messages stored in `RepoInfo.error` field

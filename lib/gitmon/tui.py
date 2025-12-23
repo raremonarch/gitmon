@@ -257,8 +257,10 @@ class GitMonApp(App):
         import os
 
         editor = os.environ.get("EDITOR", "vim")
-        self.exit()
-        subprocess.run([editor, str(self.config.config_path)])
+
+        # Suspend the app to properly restore terminal for the editor
+        with self.suspend():
+            subprocess.run([editor, str(self.config.config_path)])
 
     def _get_timestamp(self) -> str:
         """Get current timestamp string."""
