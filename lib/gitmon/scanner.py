@@ -18,6 +18,7 @@ class RepoInfo:
     ahead: int = 0
     behind: int = 0
     stash_count: int = 0
+    remote_commit_message: str = ""
     error: Optional[str] = None
 
 
@@ -131,6 +132,9 @@ class GitScanner:
             # Get ahead/behind count
             ahead, behind = self._get_tracking_status(repo_path)
 
+            # Get remote commit message
+            remote_commit_msg = self._get_remote_commit_message(repo_path)
+
             return RepoInfo(
                 name=name,
                 path=repo_path,
@@ -138,7 +142,8 @@ class GitScanner:
                 current_branch=current_branch,
                 status=status,
                 ahead=ahead,
-                behind=behind
+                behind=behind,
+                remote_commit_message=remote_commit_msg
             )
 
         except subprocess.TimeoutExpired:
@@ -188,6 +193,32 @@ class GitScanner:
 
         # Handle local paths or other formats
         return remote_url.split("/")[0] if "/" in remote_url else "local"
+
+    def _get_remote_commit_message(self, repo_path: Path) -> str:
+        """Get the most recent remote commit message.
+
+        Args:
+            repo_path: Path to the git repository
+
+        Returns:
+            Remote commit message or empty string if unavailable
+        """
+        try:
+            result = subprocess.run(
+                ["git", "log", "origin/HEAD", "-1", "--pretty=format:%s"],
+                cwd=repo_path,
+                capture_output=True,
+                text=True,
+                timeout=5
+            )
+
+            if result.returncode == 0 and result.stdout.strip():
+                return result.stdout.strip()
+
+        except (subprocess.TimeoutExpired, subprocess.CalledProcessError):
+            pass
+
+        return ""
 
     def _get_tracking_status(self, repo_path: Path) -> tuple[int, int]:
         """Get ahead/behind count for current branch.
