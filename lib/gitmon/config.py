@@ -34,13 +34,11 @@ class Config:
         try:
             with open(self.config_path) as f:
                 data: dict[str, Any] = json.load(f)
-                self.watch_directories = cast("list[str]", data.get('watch_directories', []))
-                self.refresh_interval = cast("int", data.get('refresh_interval', 5))
-                self.max_depth = cast("int", data.get('max_depth', 3))
+                self.watch_directories = cast("list[str]", data.get("watch_directories", []))
+                self.refresh_interval = cast("int", data.get("refresh_interval", 5))
+                self.max_depth = cast("int", data.get("max_depth", 3))
         except (OSError, json.JSONDecodeError) as e:
-            raise ConfigurationError(
-                f"Error loading config from {self.config_path}: {e}"
-            ) from e
+            raise ConfigurationError(f"Error loading config from {self.config_path}: {e}") from e
 
         # Validate configuration values
         self._validate()
@@ -57,9 +55,7 @@ class Config:
             )
 
         if self.refresh_interval < 1:
-            raise ConfigurationError(
-                f"refresh_interval must be >= 1, got {self.refresh_interval}"
-            )
+            raise ConfigurationError(f"refresh_interval must be >= 1, got {self.refresh_interval}")
 
         if self.max_depth < 1:
             raise ConfigurationError(f"max_depth must be >= 1, got {self.max_depth}")
@@ -73,15 +69,15 @@ class Config:
                 str(Path.home() / "code"),
             ],
             "refresh_interval": 5,
-            "max_depth": 3
+            "max_depth": 3,
         }
 
-        with open(self.config_path, 'w') as f:
+        with open(self.config_path, "w") as f:
             json.dump(default_config, f, indent=2)
 
-        self.watch_directories = cast("list[str]", default_config['watch_directories'])
-        self.refresh_interval = cast("int", default_config['refresh_interval'])
-        self.max_depth = cast("int", default_config['max_depth'])
+        self.watch_directories = cast("list[str]", default_config["watch_directories"])
+        self.refresh_interval = cast("int", default_config["refresh_interval"])
+        self.max_depth = cast("int", default_config["max_depth"])
 
     def save(self) -> None:
         """Save configuration to file."""
@@ -90,10 +86,10 @@ class Config:
         data = {
             "watch_directories": self.watch_directories,
             "refresh_interval": self.refresh_interval,
-            "max_depth": self.max_depth
+            "max_depth": self.max_depth,
         }
 
-        with open(self.config_path, 'w') as f:
+        with open(self.config_path, "w") as f:
             json.dump(data, f, indent=2)
 
     def get_expanded_directories(self) -> list[Path]:

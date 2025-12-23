@@ -108,9 +108,7 @@ class GitMonApp(App[None]):
         info_bar = self.query_one("#info-bar", Static)
 
         # Update info bar
-        info_bar.update(
-            f"Scanning repositories... (Last refresh: {self._get_timestamp()})"
-        )
+        info_bar.update(f"Scanning repositories... (Last refresh: {self._get_timestamp()})")
 
         # Scan repositories
         self.repos = self.scanner.scan_all()
@@ -147,9 +145,7 @@ class GitMonApp(App[None]):
             repo_display = f"\\[{repo.remote_owner}] {repo.name}"
 
             # Add row
-            table.add_row(
-                repo_display, Text(repo.current_branch, style="cyan"), status, tracking
-            )
+            table.add_row(repo_display, Text(repo.current_branch, style="cyan"), status, tracking)
 
         # Update info bar with stats
         clean_count = sum(1 for r in self.repos if r.status == "clean")
@@ -194,9 +190,7 @@ class GitMonApp(App[None]):
         hover_info.update(hover_text)
         hover_info.styles.display = "block"
 
-    def on_hoverable_data_table_row_hovered(
-        self, message: HoverableDataTable.RowHovered
-    ) -> None:
+    def on_hoverable_data_table_row_hovered(self, message: HoverableDataTable.RowHovered) -> None:
         """Handle row hover events from the HoverableDataTable."""
         hover_info = self.query_one("#hover-info", Static)
 

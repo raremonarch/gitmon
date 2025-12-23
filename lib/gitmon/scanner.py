@@ -76,7 +76,7 @@ class GitScanner:
         try:
             for item in directory.iterdir():
                 # Skip hidden directories (except .git which we already checked)
-                if item.name.startswith('.'):
+                if item.name.startswith("."):
                     continue
 
                 if item.is_dir():
@@ -101,7 +101,7 @@ class GitScanner:
                 cwd=repo_path,
                 capture_output=True,
                 text=True,
-                timeout=5
+                timeout=5,
             )
             current_branch = branch_result.stdout.strip() or "detached HEAD"
 
@@ -111,7 +111,7 @@ class GitScanner:
                 cwd=repo_path,
                 capture_output=True,
                 text=True,
-                timeout=5
+                timeout=5,
             )
             remote_url = remote_result.stdout.strip()
             remote_owner = self._extract_owner(remote_url)
@@ -123,7 +123,7 @@ class GitScanner:
                 cwd=repo_path,
                 capture_output=True,
                 text=True,
-                timeout=5
+                timeout=5,
             )
             has_changes = bool(status_result.stdout.strip())
             status = "changes" if has_changes else "clean"
@@ -142,7 +142,7 @@ class GitScanner:
                 status=status,
                 ahead=ahead,
                 behind=behind,
-                remote_commit_message=remote_commit_msg
+                remote_commit_message=remote_commit_msg,
             )
 
         except subprocess.TimeoutExpired:
@@ -152,7 +152,7 @@ class GitScanner:
                 remote_owner="N/A",
                 current_branch="N/A",
                 status="error",
-                error="Command timeout"
+                error="Command timeout",
             )
         except Exception as e:
             return RepoInfo(
@@ -161,7 +161,7 @@ class GitScanner:
                 remote_owner="N/A",
                 current_branch="N/A",
                 status="error",
-                error=str(e)
+                error=str(e),
             )
 
     def _extract_owner(self, remote_url: str) -> str:
@@ -240,7 +240,7 @@ class GitScanner:
                 cwd=repo_path,
                 capture_output=True,
                 text=True,
-                timeout=5
+                timeout=5,
             )
 
             if result.returncode == 0 and result.stdout.strip():
@@ -266,7 +266,7 @@ class GitScanner:
                 cwd=repo_path,
                 capture_output=True,
                 text=True,
-                timeout=5
+                timeout=5,
             )
 
             if result.returncode == 0 and result.stdout.strip():

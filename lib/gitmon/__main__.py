@@ -33,20 +33,16 @@ The config file should contain:
     "watch_directories": ["/path/to/repos", "~/code"],
     "refresh_interval": 5
   }
-        """
+        """,
     )
 
     parser.add_argument(
         "--config",
         type=Path,
-        help="Path to configuration file (default: ~/.config/gitmon/config.json)"
+        help="Path to configuration file (default: ~/.config/gitmon/config.json)",
     )
 
-    parser.add_argument(
-        "--version",
-        action="version",
-        version=f"gitmon {version('gitmon')}"
-    )
+    parser.add_argument("--version", action="version", version=f"gitmon {version('gitmon')}")
 
     args = parser.parse_args()
 

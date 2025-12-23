@@ -56,16 +56,24 @@ This document tracks all tasks needed to harden GitMon for a stable release. Ite
 - [x] Added pytest configuration to `pyproject.toml`
 - [x] All linting and type checks passing
 
-## Phase 2: Configuration Hardening
+## Phase 2: Configuration Hardening ✅ COMPLETED
 
-### Validation (30 minutes)
+### Validation
 
-- [ ] Add validation in `config.py` `load()` method
-  - [ ] Validate `refresh_interval >= 1`
-  - [ ] Validate `max_depth >= 1`
-  - [ ] Validate `watch_directories` is a list
-- [ ] Add tests for invalid config values
-- [ ] Handle validation errors gracefully with helpful messages
+- [x] Add validation in `config.py` `load()` method
+  - [x] Validate `refresh_interval >= 1`
+  - [x] Validate `max_depth >= 1`
+  - [x] Validate `watch_directories` is a list
+- [x] Add tests for invalid config values
+- [x] Handle validation errors gracefully with helpful messages
+
+### Custom Exceptions (from Phase 3)
+
+- [x] Create `exceptions.py` module
+- [x] Define `GitMonError` base exception
+- [x] Define `GitCommandError(GitMonError)` for git failures
+- [x] Define `ConfigurationError(GitMonError)` for config issues
+- [x] Replace `ValueError` raises with `ConfigurationError`
 
 ## Phase 3: Error Handling & Logging
 
@@ -302,13 +310,14 @@ This document tracks all tasks needed to harden GitMon for a stable release. Ite
   - [ ] Publish to PyPI (when ready)
 - [ ] Add status badges to README.md
 
-### Pre-commit Hooks (30 minutes)
+### Pre-commit Hooks ✅ COMPLETED
 
-- [ ] Create `.pre-commit-config.yaml`
-  - [ ] Add ruff formatter
-  - [ ] Add ruff linter
-  - [ ] Add mypy
-  - [ ] Add trailing whitespace fixer
+- [x] Create `.pre-commit-config.yaml`
+  - [x] Add ruff formatter
+  - [x] Add ruff linter
+  - [x] Add mypy
+  - [x] Add trailing whitespace fixer
+  - [x] Add standard pre-commit hooks (check-yaml, check-json, check-toml, etc.)
 - [ ] Document pre-commit setup in CONTRIBUTING.md
 
 ## Phase 12: Final Polish
