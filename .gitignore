@@ -9,6 +9,11 @@ __pycache__/
 *.so
 .mypy_cache/
 
+# Testing
+.coverage
+htmlcov/
+.pytest_cache/
+
 # Distribution / packaging
 .Python
 build/
