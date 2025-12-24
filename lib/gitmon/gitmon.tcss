@@ -40,7 +40,8 @@ Footer {
 }
 
 #hover-info {
-    height: 3;
+    height: auto;
+    max-height: 10;
     background: $panel;
     padding: 0 1;
     margin: 0;

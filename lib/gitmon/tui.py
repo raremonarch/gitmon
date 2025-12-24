@@ -334,13 +334,28 @@ class GitMonApp(App[None]):
         repo = sorted_repos[row_index]
 
         # Format hover information
+        lines = []
+
+        # Add remote commit info
         commit_line = (
             f"Last Remote Commit: {repo.remote_commit_message}"
             if repo.remote_commit_message
             else "Last Remote Commit: (no commit info)"
         )
-        path_line = f"Path: {repo.path}"
-        hover_text = f"{commit_line}\n{path_line}"
+        lines.append(commit_line)
+
+        # Add path
+        lines.append(f"Path: {repo.path}")
+
+        # Add fetch status information if auto-fetch is enabled and we have results
+        if self.config.auto_fetch_enabled and repo.path in self._fetch_results:
+            success, error_msg = self._fetch_results[repo.path]
+            if success:
+                lines.append("Fetch Status: ✓ Success")
+            else:
+                lines.append(f"Fetch Status: ✗ Failed - {error_msg}")
+
+        hover_text = "\n".join(lines)
 
         # Update the widget
         hover_info.update(hover_text)

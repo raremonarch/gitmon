@@ -133,8 +133,9 @@ GitMon displays the following information for each repository:
   - ✗ error - Error accessing repository
 - **Tracking**: Commits ahead (↑) and behind (↓) remote
   - When auto-fetch is enabled, also shows fetch status:
-    - ✓ - Last fetch succeeded
-    - ✗ - Last fetch failed (e.g., SSH key missing, authentication failure)
+    - ✓ (green) - Last fetch succeeded
+    - ✗ (red) - Last fetch failed (e.g., SSH key missing, authentication failure)
+    - Hover over any row to see fetch error details when a fetch has failed
 
 ## Scanning Behavior
 
