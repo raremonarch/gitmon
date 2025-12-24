@@ -1,6 +1,8 @@
 """Textual TUI interface for gitmon."""
 
+import os
 import re
+import subprocess
 from pathlib import Path
 from typing import Any, Optional
 
@@ -419,16 +421,41 @@ class GitMonApp(App[None]):
         else:
             self._show_repo_info(message.row_index)
 
+    def _get_editor(self) -> str:
+        """Get the editor command to use.
+
+        Returns:
+            Editor command from EDITOR/VISUAL environment variables, with sensible fallbacks
+        """
+        # Prefer EDITOR, then VISUAL, then try common system editors
+        editor = os.environ.get("EDITOR") or os.environ.get("VISUAL")
+        if editor:
+            return editor
+
+        # Fall back to common system editors (check which exists)
+        import shutil
+
+        for fallback in ["sensible-editor", "editor", "nano", "vi"]:
+            if shutil.which(fallback):
+                return fallback
+
+        # Last resort: vi (should exist on all Unix systems)
+        return "vi"
+
+    def _open_editor(self, file_path: str) -> None:
+        """Open a file in the configured editor.
+
+        Args:
+            file_path: Path to file to edit
+        """
+        editor = self._get_editor()
+        subprocess.run([editor, file_path], check=False)
+
     def action_open_config(self) -> None:
         """Open configuration file in default editor."""
-        import os
-        import subprocess
-
-        editor = os.environ.get("EDITOR", "vim")
-
         # Suspend the app to properly restore terminal for the editor
         with self.suspend():
-            subprocess.run([editor, str(self.config.config_path)])
+            self._open_editor(str(self.config.config_path))
 
     def _get_timestamp(self) -> str:
         """Get current timestamp string."""

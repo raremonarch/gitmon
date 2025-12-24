@@ -4,9 +4,54 @@ import logging
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Protocol
 
 logger = logging.getLogger(__name__)
+
+
+class GitCommandRunner(Protocol):
+    """Protocol for running git commands (allows for test mocking)."""
+
+    def run(self, cwd: Path, args: list[str], timeout: int = 5) -> subprocess.CompletedProcess[str]:
+        """Run a git command in the specified directory.
+
+        Args:
+            cwd: Working directory for the command
+            args: Command arguments (including 'git')
+            timeout: Timeout in seconds
+
+        Returns:
+            CompletedProcess with stdout/stderr as text
+
+        Raises:
+            subprocess.TimeoutExpired: If command times out
+            subprocess.CalledProcessError: If command fails
+        """
+        ...
+
+
+class SubprocessGitRunner:
+    """Default git command runner using subprocess."""
+
+    def run(self, cwd: Path, args: list[str], timeout: int = 5) -> subprocess.CompletedProcess[str]:
+        """Run a git command using subprocess.
+
+        Args:
+            cwd: Working directory for the command
+            args: Command arguments (including 'git')
+            timeout: Timeout in seconds
+
+        Returns:
+            CompletedProcess with stdout/stderr as text
+        """
+        return subprocess.run(
+            args,
+            cwd=cwd,
+            capture_output=True,
+            text=True,
+            timeout=timeout,
+            check=False,  # We handle errors manually
+        )
 
 
 @dataclass
@@ -29,15 +74,22 @@ class RepoInfo:
 class GitScanner:
     """Scanner for finding and analyzing git repositories."""
 
-    def __init__(self, watch_directories: list[Path], max_depth: int = 3):
+    def __init__(
+        self,
+        watch_directories: list[Path],
+        max_depth: int = 3,
+        runner: Optional[GitCommandRunner] = None,
+    ):
         """Initialize scanner with directories to watch.
 
         Args:
             watch_directories: List of directories to scan for git repos
             max_depth: Maximum directory depth to search (default: 3)
+            runner: Git command runner (defaults to SubprocessGitRunner)
         """
         self.watch_directories = watch_directories
         self.max_depth = max_depth
+        self.runner = runner if runner is not None else SubprocessGitRunner()
 
     def find_repositories(self) -> list[Path]:
         """Find all git repositories in watch directories.
@@ -100,35 +152,21 @@ class GitScanner:
         """
         try:
             # Get current branch
-            branch_result = subprocess.run(
-                ["git", "branch", "--show-current"],
-                cwd=repo_path,
-                capture_output=True,
-                text=True,
-                timeout=5,
+            branch_result = self.runner.run(
+                repo_path, ["git", "branch", "--show-current"], timeout=5
             )
             current_branch = branch_result.stdout.strip() or "detached HEAD"
 
             # Get remote URL and extract owner and repo name
-            remote_result = subprocess.run(
-                ["git", "remote", "get-url", "origin"],
-                cwd=repo_path,
-                capture_output=True,
-                text=True,
-                timeout=5,
+            remote_result = self.runner.run(
+                repo_path, ["git", "remote", "get-url", "origin"], timeout=5
             )
             remote_url = remote_result.stdout.strip()
             remote_owner = self._extract_owner(remote_url)
             name = self._extract_repo_name(remote_url) or repo_path.name
 
             # Check for changes
-            status_result = subprocess.run(
-                ["git", "status", "--porcelain"],
-                cwd=repo_path,
-                capture_output=True,
-                text=True,
-                timeout=5,
-            )
+            status_result = self.runner.run(repo_path, ["git", "status", "--porcelain"], timeout=5)
             has_changes = bool(status_result.stdout.strip())
             status = "changes" if has_changes else "clean"
 
@@ -251,12 +289,8 @@ class GitScanner:
             Remote commit message or empty string if unavailable
         """
         try:
-            result = subprocess.run(
-                ["git", "log", "origin/HEAD", "-1", "--pretty=format:%s"],
-                cwd=repo_path,
-                capture_output=True,
-                text=True,
-                timeout=5,
+            result = self.runner.run(
+                repo_path, ["git", "log", "origin/HEAD", "-1", "--pretty=format:%s"], timeout=5
             )
 
             if result.returncode == 0 and result.stdout.strip():
@@ -277,11 +311,9 @@ class GitScanner:
             Tuple of (ahead_count, behind_count)
         """
         try:
-            result = subprocess.run(
+            result = self.runner.run(
+                repo_path,
                 ["git", "rev-list", "--left-right", "--count", "HEAD...@{upstream}"],
-                cwd=repo_path,
-                capture_output=True,
-                text=True,
                 timeout=5,
             )
 
@@ -308,21 +340,15 @@ class GitScanner:
         """
         try:
             logger.debug(f"Fetching repository: {repo_path}")
-            result = subprocess.run(
-                ["git", "fetch", "--all"],
-                cwd=repo_path,
-                capture_output=True,
-                text=True,
-                timeout=30,
-            )
+            result = self.runner.run(repo_path, ["git", "fetch", "--all"], timeout=30)
 
             if result.returncode == 0:
                 logger.debug(f"Successfully fetched {repo_path}")
                 return True, "Success"
-            else:
-                error_msg = result.stderr.strip() or result.stdout.strip() or "Unknown error"
-                logger.warning(f"Failed to fetch {repo_path}: {error_msg}")
-                return False, error_msg
+
+            error_msg = result.stderr.strip() or result.stdout.strip() or "Unknown error"
+            logger.warning(f"Failed to fetch {repo_path}: {error_msg}")
+            return False, error_msg
 
         except subprocess.TimeoutExpired:
             logger.warning(f"Fetch timeout for {repo_path}")

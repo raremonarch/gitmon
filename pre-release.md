@@ -102,22 +102,23 @@ This document tracks all tasks needed to harden GitMon for a stable release. Ite
 - [x] Ensure errors reach user with helpful messages
 - [x] Add logging to all exception handlers
 
-## Phase 4: Dependency Injection & Testability
+## Phase 4: Dependency Injection & Testability ✅ COMPLETED
 
-### Git Command Abstraction (1 hour)
+### Git Command Abstraction
 
-- [ ] Create `GitCommandRunner` class in `scanner.py`
-  - [ ] Define `run(cwd: Path, args: list[str])` method
-  - [ ] Implement default subprocess-based runner
-- [ ] Refactor `GitScanner.__init__` to accept optional `runner` parameter
-- [ ] Update all `subprocess.run()` calls to use `self.runner.run()`
-- [ ] Test with mock runner to verify abstraction works
+- [x] Create `GitCommandRunner` Protocol in `scanner.py`
+  - [x] Define `run(cwd: Path, args: list[str], timeout: int)` method
+  - [x] Implement `SubprocessGitRunner` default implementation
+- [x] Refactor `GitScanner.__init__` to accept optional `runner` parameter
+- [x] Update all `subprocess.run()` calls to use `self.runner.run()`
+- [x] Test with mock runner to verify abstraction works
 
-### TUI Testability (30 minutes)
+### TUI Testability
 
-- [ ] Extract subprocess import from `action_open_config()` in `tui.py`
-- [ ] Consider making editor command configurable
-- [ ] Ensure TUI methods can be tested without running full app
+- [x] Move subprocess import to top-level in `tui.py`
+- [x] Extract editor methods (`_get_editor()` and `_open_editor()`) for testability
+- [x] Ensure TUI methods can be tested without running full app
+- [x] Editor command configurable via `EDITOR` environment variable
 
 ## Phase 5: Test Infrastructure
 
