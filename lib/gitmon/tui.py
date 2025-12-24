@@ -51,6 +51,7 @@ class GitMonApp(App[None]):
     BINDINGS = [
         Binding("r", "refresh", "Refresh", priority=True),
         Binding("f", "fetch", "Fetch All", priority=True),
+        Binding("a", "toggle_auto_fetch", "Auto-Fetch", priority=True),
         Binding("q", "quit", "Quit", priority=True),
         Binding("c", "open_config", "Config", priority=True),
     ]
@@ -66,6 +67,7 @@ class GitMonApp(App[None]):
         self.scanner = GitScanner(config.get_expanded_directories(), config.max_depth)
         self.repos: list[RepoInfo] = []
         self._fetch_worker: Optional[Worker[dict[Path, tuple[bool, str]]]] = None
+        self._auto_fetch_timer = None
 
     def compose(self) -> ComposeResult:
         """Compose the application layout."""
@@ -97,6 +99,12 @@ class GitMonApp(App[None]):
 
         # Set up auto-refresh timer
         self.set_interval(self.config.refresh_interval, self.action_refresh)
+
+        # Set up auto-fetch timer if enabled
+        if self.config.auto_fetch_enabled:
+            self._auto_fetch_timer = self.set_interval(
+                self.config.auto_fetch_interval, self.action_fetch
+            )
 
     def _get_sorted_repos(self) -> list[RepoInfo]:
         """Get repositories sorted by owner then name.
@@ -167,16 +175,18 @@ class GitMonApp(App[None]):
         if error_count > 0:
             stats += f" | Errors: {error_count}"
 
+        # Add auto-fetch status
+        if self.config.auto_fetch_enabled:
+            stats += f" | Auto-fetch: ON ({self.config.auto_fetch_interval}s)"
+        else:
+            stats += " | Auto-fetch: OFF"
+
         info_bar.update(stats)
 
     def action_fetch(self) -> None:
         """Fetch updates for all repositories in background."""
         # Check if a fetch is already running
-        if (
-            hasattr(self, "_fetch_worker")
-            and self._fetch_worker
-            and self._fetch_worker.state == WorkerState.RUNNING
-        ):
+        if self._fetch_worker and self._fetch_worker.state == WorkerState.RUNNING:
             fetch_status = self.query_one("#fetch-status", Static)
             fetch_status.update("Fetch already in progress...")
             fetch_status.styles.display = "block"
@@ -235,6 +245,51 @@ class GitMonApp(App[None]):
         self.call_from_thread(self.set_timer, 5, hide_fetch_status)
 
         return results
+
+    def action_toggle_auto_fetch(self) -> None:
+        """Toggle automatic fetch on/off and save config."""
+        # Toggle the setting
+        self.config.auto_fetch_enabled = not self.config.auto_fetch_enabled
+
+        # Save updated config
+        try:
+            self.config.save()
+        except Exception as e:
+            fetch_status = self.query_one("#fetch-status", Static)
+            fetch_status.update(f"Error saving config: {e}")
+            fetch_status.styles.display = "block"
+            self.set_timer(3, lambda: setattr(fetch_status.styles, "display", "none"))
+            return
+
+        # Update timer
+        if self.config.auto_fetch_enabled:
+            # Start the auto-fetch timer
+            if self._auto_fetch_timer:
+                self._auto_fetch_timer.stop()
+            self._auto_fetch_timer = self.set_interval(
+                self.config.auto_fetch_interval, self.action_fetch
+            )
+            status_msg = f"Auto-fetch enabled (every {self.config.auto_fetch_interval}s)"
+        else:
+            # Stop the auto-fetch timer
+            if self._auto_fetch_timer:
+                self._auto_fetch_timer.stop()
+                self._auto_fetch_timer = None
+            status_msg = "Auto-fetch disabled"
+
+        # Refresh the display to update info bar immediately
+        self.action_refresh()
+
+        # Show notification
+        fetch_status = self.query_one("#fetch-status", Static)
+        fetch_status.update(f"[{self._get_timestamp()}] {status_msg}")
+        fetch_status.styles.display = "block"
+
+        # Hide notification after 3 seconds
+        def hide_notification() -> None:
+            fetch_status.styles.display = "none"
+
+        self.set_timer(3, hide_notification)
 
     def _show_repo_info(self, row_index: int) -> None:
         """Show repository info for the given row index."""

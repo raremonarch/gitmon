@@ -29,6 +29,16 @@ Footer {
     display: none;
 }
 
+#fetch-errors {
+    height: auto;
+    max-height: 10;
+    background: $error;
+    padding: 0 1;
+    margin: 0;
+    color: white;
+    display: none;
+}
+
 #hover-info {
     height: 3;
     background: $panel;

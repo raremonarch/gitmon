@@ -23,6 +23,8 @@ class Config:
         self.watch_directories: list[str] = []
         self.refresh_interval: int = 5
         self.max_depth: int = 3
+        self.auto_fetch_enabled: bool = False
+        self.auto_fetch_interval: int = 300
         self.load()
 
     def load(self) -> None:
@@ -37,6 +39,8 @@ class Config:
                 self.watch_directories = cast("list[str]", data.get("watch_directories", []))
                 self.refresh_interval = cast("int", data.get("refresh_interval", 5))
                 self.max_depth = cast("int", data.get("max_depth", 3))
+                self.auto_fetch_enabled = cast("bool", data.get("auto_fetch_enabled", False))
+                self.auto_fetch_interval = cast("int", data.get("auto_fetch_interval", 300))
         except (OSError, json.JSONDecodeError) as e:
             raise ConfigurationError(f"Error loading config from {self.config_path}: {e}") from e
 
@@ -60,6 +64,11 @@ class Config:
         if self.max_depth < 1:
             raise ConfigurationError(f"max_depth must be >= 1, got {self.max_depth}")
 
+        if self.auto_fetch_interval < 60:
+            raise ConfigurationError(
+                f"auto_fetch_interval must be >= 60 seconds, got {self.auto_fetch_interval}"
+            )
+
     def _create_default_config(self) -> None:
         """Create default configuration file."""
         self.config_path.parent.mkdir(parents=True, exist_ok=True)
@@ -70,6 +79,8 @@ class Config:
             ],
             "refresh_interval": 5,
             "max_depth": 3,
+            "auto_fetch_enabled": False,
+            "auto_fetch_interval": 300,
         }
 
         with open(self.config_path, "w") as f:
@@ -78,6 +89,8 @@ class Config:
         self.watch_directories = cast("list[str]", default_config["watch_directories"])
         self.refresh_interval = cast("int", default_config["refresh_interval"])
         self.max_depth = cast("int", default_config["max_depth"])
+        self.auto_fetch_enabled = cast("bool", default_config["auto_fetch_enabled"])
+        self.auto_fetch_interval = cast("int", default_config["auto_fetch_interval"])
 
     def save(self) -> None:
         """Save configuration to file."""
@@ -87,6 +100,8 @@ class Config:
             "watch_directories": self.watch_directories,
             "refresh_interval": self.refresh_interval,
             "max_depth": self.max_depth,
+            "auto_fetch_enabled": self.auto_fetch_enabled,
+            "auto_fetch_interval": self.auto_fetch_interval,
         }
 
         with open(self.config_path, "w") as f:

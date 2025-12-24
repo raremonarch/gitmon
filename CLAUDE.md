@@ -43,9 +43,12 @@ GitMon is a Python TUI (Text User Interface) application built with [Textual](ht
 - **Mouse hover:** Displays remote commit message and local path on hover (lines 216-235)
 - **Key bindings:**
   - `r` - Manual refresh
+  - `f` - Manual fetch all repos
+  - `a` - Toggle auto-fetch on/off (saves config immediately)
   - `q` - Quit application
   - `c` - Open configuration file
 - **Auto-refresh:** Configurable interval (default 5 seconds)
+- **Auto-fetch:** Optional automatic git fetch for all repos (configurable interval, default 300 seconds)
 
 ### [lib/gitmon/scanner.py](lib/gitmon/scanner.py) - Git Analysis
 
@@ -63,6 +66,8 @@ GitMon is a Python TUI (Text User Interface) application built with [Textual](ht
   - `watch_directories` - Paths to scan for repos
   - `refresh_interval` - Seconds between refreshes (default: 5)
   - `max_depth` - Max directory search depth (default: 3)
+  - `auto_fetch_enabled` - Enable automatic fetching (default: false)
+  - `auto_fetch_interval` - Seconds between auto-fetches (default: 300, minimum: 60)
 
 ## Data Flow
 

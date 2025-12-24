@@ -8,6 +8,7 @@ A terminal user interface (TUI) for monitoring multiple git repositories at a gl
 - Display repository name, remote owner, current branch, and status
 - Show tracking information (commits ahead/behind)
 - Auto-refresh at configurable intervals
+- Manual and automatic git fetch for all repositories
 - Clean, colorful TUI built with Textual
 
 ## Installation
@@ -60,6 +61,8 @@ On first run, gitmon creates a default configuration file at:
 - `watch_directories`: Array of directory paths to scan for git repositories
 - `refresh_interval`: Seconds between automatic refreshes (default: 5)
 - `max_depth`: Maximum directory depth to search for repositories (default: 3)
+- `auto_fetch_enabled`: Enable automatic fetching of all repositories (default: false)
+- `auto_fetch_interval`: Seconds between automatic fetches (default: 300, minimum: 60)
 
 ### Example Configuration
 
@@ -71,7 +74,9 @@ On first run, gitmon creates a default configuration file at:
     "/path/to/other/repos"
   ],
   "refresh_interval": 5,
-  "max_depth": 3
+  "max_depth": 3,
+  "auto_fetch_enabled": false,
+  "auto_fetch_interval": 300
 }
 ```
 
@@ -90,8 +95,28 @@ gitmon --config /path/to/config.json
 ### Keyboard Shortcuts
 
 - `r` - Refresh repository information
+- `f` - Fetch updates from all remotes (runs `git fetch --all` for each repo)
+- `a` - Toggle auto-fetch on/off (updates config file)
 - `c` - Open configuration file in editor ($EDITOR or vim)
 - `q` - Quit application
+
+### Automatic Fetching
+
+GitMon can automatically fetch updates from remotes at regular intervals:
+
+- **Toggle on/off**: Press `a` to toggle auto-fetch (saves to config file immediately)
+- **Manual config**: Set `auto_fetch_enabled: true` in your config file
+- Configure fetch frequency with `auto_fetch_interval` (default: 300 seconds / 5 minutes)
+- Minimum interval is 60 seconds to avoid excessive network traffic
+- Fetch operations run in the background with progress display
+- Current status shown in info bar: "Auto-fetch: ON (300s)" or "Auto-fetch: OFF"
+- Manual refresh (press `r`) or automatic refresh will show updated tracking info after fetch completes
+
+When a fetch is running (manual or automatic):
+- Progress is displayed showing which repo is being fetched (e.g., "Fetching 3/10: gitmon...")
+- Completion message shows success/failure counts
+- Failed fetches display error messages for troubleshooting
+- The display automatically refreshes after fetch completes to show new tracking information
 
 ## Repository Information
 
