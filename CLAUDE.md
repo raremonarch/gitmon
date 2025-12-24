@@ -99,6 +99,10 @@ GitMon is a Python TUI (Text User Interface) application built with [Textual](ht
 - **Example:** `↑ 5  ↓ 3` means 5 commits ahead, 3 commits behind upstream
 - **Width:** 15 characters
 - **Spacing:** Space between arrow and number, double space between indicators
+- **Fetch Status (when auto-fetch enabled):**
+  - `✓` - Last fetch succeeded
+  - `✗` - Last fetch failed (e.g., SSH auth failure)
+  - Appears after tracking arrows/numbers, separated by double space
 
 ### Mouse Hover Tooltip
 

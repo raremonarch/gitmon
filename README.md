@@ -117,6 +117,7 @@ When a fetch is running (manual or automatic):
 - Completion message shows success/failure counts
 - Failed fetches display error messages for troubleshooting
 - The display automatically refreshes after fetch completes to show new tracking information
+- Enabling auto-fetch triggers an immediate fetch to populate status indicators
 
 ## Repository Information
 
@@ -131,6 +132,9 @@ GitMon displays the following information for each repository:
   - ● changes - Uncommitted changes present
   - ✗ error - Error accessing repository
 - **Tracking**: Commits ahead (↑) and behind (↓) remote
+  - When auto-fetch is enabled, also shows fetch status:
+    - ✓ - Last fetch succeeded
+    - ✗ - Last fetch failed (e.g., SSH key missing, authentication failure)
 
 ## Scanning Behavior
 

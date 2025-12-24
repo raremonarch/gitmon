@@ -20,6 +20,7 @@ class RepoInfo:
     stash_count: int = 0
     remote_commit_message: str = ""
     error: Optional[str] = None
+    fetch_status: Optional[str] = None  # "success", "failed", or None if not fetched yet
 
 
 class GitScanner:

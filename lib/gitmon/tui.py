@@ -68,6 +68,7 @@ class GitMonApp(App[None]):
         self.repos: list[RepoInfo] = []
         self._fetch_worker: Optional[Worker[dict[Path, tuple[bool, str]]]] = None
         self._auto_fetch_timer = None
+        self._fetch_results: dict[Path, tuple[bool, str]] = {}  # Track fetch status by repo path
 
     def compose(self) -> ComposeResult:
         """Compose the application layout."""
@@ -100,11 +101,13 @@ class GitMonApp(App[None]):
         # Set up auto-refresh timer
         self.set_interval(self.config.refresh_interval, self.action_refresh)
 
-        # Set up auto-fetch timer if enabled
+        # Set up auto-fetch timer and trigger initial fetch if enabled
         if self.config.auto_fetch_enabled:
             self._auto_fetch_timer = self.set_interval(
                 self.config.auto_fetch_interval, self.action_fetch
             )
+            # Trigger an immediate fetch on startup to populate status indicators
+            self.action_fetch()
 
     def _get_sorted_repos(self) -> list[RepoInfo]:
         """Get repositories sorted by owner then name.
@@ -125,6 +128,12 @@ class GitMonApp(App[None]):
         # Scan repositories
         self.repos = self.scanner.scan_all()
 
+        # Apply fetch status from previous fetch results
+        for repo in self.repos:
+            if repo.path in self._fetch_results:
+                success, _ = self._fetch_results[repo.path]
+                repo.fetch_status = "success" if success else "failed"
+
         # Sort repositories by owner then name
         sorted_repos = self._get_sorted_repos()
 
@@ -141,14 +150,26 @@ class GitMonApp(App[None]):
             else:
                 status = Text("✗ error", style="red")
 
-            # Format tracking info
+            # Format tracking info with fetch status first, then branch divergence
+            tracking_parts = []
+
+            # Add fetch status indicator first if auto-fetch is enabled
+            if self.config.auto_fetch_enabled and repo.fetch_status:
+                if repo.fetch_status == "success":
+                    tracking_parts.append(Text("✓", style="green"))
+                else:  # failed
+                    tracking_parts.append(Text("✗", style="red"))
+
+            # Add branch divergence indicators
             if repo.ahead > 0 or repo.behind > 0:
-                parts = []
                 if repo.ahead > 0:
-                    parts.append(f"↑ {repo.ahead}")
+                    tracking_parts.append(Text(f"↑ {repo.ahead}"))
                 if repo.behind > 0:
-                    parts.append(f"↓ {repo.behind}")
-                tracking = "  ".join(parts)
+                    tracking_parts.append(Text(f"↓ {repo.behind}"))
+
+            # Combine all parts with spacing
+            if tracking_parts:
+                tracking = Text("  ").join(tracking_parts)
             else:
                 tracking = ""
 
@@ -200,26 +221,26 @@ class GitMonApp(App[None]):
     def _fetch_all_repos(self) -> dict[Path, tuple[bool, str]]:
         """Background worker to fetch all repositories with progress updates."""
         fetch_status = self.query_one("#fetch-status", Static)
-        repos = self.scanner.find_repositories()
-        total = len(repos)
+        repo_paths = self.scanner.find_repositories()
+        total = len(repo_paths)
         results = {}
 
-        for idx, repo in enumerate(repos, 1):
+        for idx, repo_path in enumerate(repo_paths, 1):
             # Update progress in UI
-            repo_name = repo.name
+            repo_name = repo_path.name
             self.call_from_thread(
                 fetch_status.update,
                 f"[{self._get_timestamp()}] Fetching {idx}/{total}: {repo_name}...",
             )
 
             # Fetch the repo
-            success, message = self.scanner.fetch_repo(repo)
-            results[repo] = (success, message)
+            success, message = self.scanner.fetch_repo(repo_path)
+            results[repo_path] = (success, message)
 
         # Count results and collect failures
         success_count = sum(1 for success, _ in results.values() if success)
         fail_count = total - success_count
-        failures = [(repo, msg) for repo, (success, msg) in results.items() if not success]
+        failures = [(path, msg) for path, (success, msg) in results.items() if not success]
 
         # Update final message
         if fail_count == 0:
@@ -228,12 +249,15 @@ class GitMonApp(App[None]):
             )
         else:
             # Show first few failures with error messages
-            error_details = "\n".join([f"  - {repo.name}: {msg}" for repo, msg in failures[:3]])
+            error_details = "\n".join([f"  - {path.name}: {msg}" for path, msg in failures[:3]])
             if fail_count > 3:
                 error_details += f"\n  ... and {fail_count - 3} more"
             final_message = f"[{self._get_timestamp()}] Fetch complete: {success_count} succeeded, {fail_count} failed\n{error_details}"
 
         self.call_from_thread(fetch_status.update, final_message)
+
+        # Store fetch results for display in tracking column (keyed by repo path)
+        self._fetch_results = {path: (success, msg) for path, (success, msg) in results.items()}
 
         # Trigger refresh from main thread
         self.call_from_thread(self.action_refresh)
@@ -261,7 +285,7 @@ class GitMonApp(App[None]):
             self.set_timer(3, lambda: setattr(fetch_status.styles, "display", "none"))
             return
 
-        # Update timer
+        # Update timer and trigger fetch if enabling
         if self.config.auto_fetch_enabled:
             # Start the auto-fetch timer
             if self._auto_fetch_timer:
@@ -270,6 +294,12 @@ class GitMonApp(App[None]):
                 self.config.auto_fetch_interval, self.action_fetch
             )
             status_msg = f"Auto-fetch enabled (every {self.config.auto_fetch_interval}s)"
+
+            # Refresh display first to show new status
+            self.action_refresh()
+
+            # Trigger an immediate fetch to populate status indicators
+            self.action_fetch()
         else:
             # Stop the auto-fetch timer
             if self._auto_fetch_timer:
@@ -277,19 +307,19 @@ class GitMonApp(App[None]):
                 self._auto_fetch_timer = None
             status_msg = "Auto-fetch disabled"
 
-        # Refresh the display to update info bar immediately
-        self.action_refresh()
+            # Refresh display to update info bar
+            self.action_refresh()
 
-        # Show notification
-        fetch_status = self.query_one("#fetch-status", Static)
-        fetch_status.update(f"[{self._get_timestamp()}] {status_msg}")
-        fetch_status.styles.display = "block"
+            # Show notification
+            fetch_status = self.query_one("#fetch-status", Static)
+            fetch_status.update(f"[{self._get_timestamp()}] {status_msg}")
+            fetch_status.styles.display = "block"
 
-        # Hide notification after 3 seconds
-        def hide_notification() -> None:
-            fetch_status.styles.display = "none"
+            # Hide notification after 3 seconds
+            def hide_notification() -> None:
+                fetch_status.styles.display = "none"
 
-        self.set_timer(3, hide_notification)
+            self.set_timer(3, hide_notification)
 
     def _show_repo_info(self, row_index: int) -> None:
         """Show repository info for the given row index."""
