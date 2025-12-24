@@ -281,6 +281,47 @@ class GitScanner:
 
         return 0, 0
 
+    def fetch_repo(self, repo_path: Path) -> tuple[bool, str]:
+        """Fetch updates for a single repository.
+
+        Args:
+            repo_path: Path to the git repository
+
+        Returns:
+            Tuple of (success: bool, message: str)
+        """
+        try:
+            result = subprocess.run(
+                ["git", "fetch", "--all"],
+                cwd=repo_path,
+                capture_output=True,
+                text=True,
+                timeout=30,
+            )
+
+            if result.returncode == 0:
+                return True, "Success"
+            else:
+                error_msg = result.stderr.strip() or result.stdout.strip() or "Unknown error"
+                return False, error_msg
+
+        except subprocess.TimeoutExpired:
+            return False, "Timeout (30s)"
+        except Exception as e:
+            return False, str(e)
+
+    def fetch_all(self) -> dict[Path, tuple[bool, str]]:
+        """Fetch updates for all repositories.
+
+        Returns:
+            Dictionary mapping repo paths to (success, message) tuples
+        """
+        repos = self.find_repositories()
+        results = {}
+        for repo in repos:
+            results[repo] = self.fetch_repo(repo)
+        return results
+
     def scan_all(self) -> list[RepoInfo]:
         """Scan all repositories and return their information.
 

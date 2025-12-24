@@ -19,6 +19,16 @@ Footer {
     color: $text;
 }
 
+#fetch-status {
+    height: auto;
+    max-height: 8;
+    background: $panel;
+    padding: 0 1;
+    margin: 0;
+    color: $accent;
+    display: none;
+}
+
 #hover-info {
     height: 3;
     background: $panel;

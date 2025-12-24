@@ -9,6 +9,7 @@ from textual.binding import Binding
 from textual.events import MouseMove
 from textual.message import Message
 from textual.widgets import DataTable, Footer, Header, Static
+from textual.worker import Worker, WorkerState
 
 from .config import Config
 from .scanner import GitScanner, RepoInfo
@@ -49,6 +50,7 @@ class GitMonApp(App[None]):
 
     BINDINGS = [
         Binding("r", "refresh", "Refresh", priority=True),
+        Binding("f", "fetch", "Fetch All", priority=True),
         Binding("q", "quit", "Quit", priority=True),
         Binding("c", "open_config", "Config", priority=True),
     ]
@@ -63,12 +65,14 @@ class GitMonApp(App[None]):
         self.config = config
         self.scanner = GitScanner(config.get_expanded_directories(), config.max_depth)
         self.repos: list[RepoInfo] = []
+        self._fetch_worker: Optional[Worker[dict[Path, tuple[bool, str]]]] = None
 
     def compose(self) -> ComposeResult:
         """Compose the application layout."""
         yield Header()
         yield Static(id="info-bar")
         yield HoverableDataTable()
+        yield Static(id="fetch-status")
         yield Static(id="hover-info")
         yield Footer()
 
@@ -164,6 +168,73 @@ class GitMonApp(App[None]):
             stats += f" | Errors: {error_count}"
 
         info_bar.update(stats)
+
+    def action_fetch(self) -> None:
+        """Fetch updates for all repositories in background."""
+        # Check if a fetch is already running
+        if (
+            hasattr(self, "_fetch_worker")
+            and self._fetch_worker
+            and self._fetch_worker.state == WorkerState.RUNNING
+        ):
+            fetch_status = self.query_one("#fetch-status", Static)
+            fetch_status.update("Fetch already in progress...")
+            fetch_status.styles.display = "block"
+            return
+
+        # Show fetch status widget and start the background fetch worker
+        fetch_status = self.query_one("#fetch-status", Static)
+        fetch_status.styles.display = "block"
+        self._fetch_worker = self.run_worker(self._fetch_all_repos, thread=True)
+
+    def _fetch_all_repos(self) -> dict[Path, tuple[bool, str]]:
+        """Background worker to fetch all repositories with progress updates."""
+        fetch_status = self.query_one("#fetch-status", Static)
+        repos = self.scanner.find_repositories()
+        total = len(repos)
+        results = {}
+
+        for idx, repo in enumerate(repos, 1):
+            # Update progress in UI
+            repo_name = repo.name
+            self.call_from_thread(
+                fetch_status.update,
+                f"[{self._get_timestamp()}] Fetching {idx}/{total}: {repo_name}...",
+            )
+
+            # Fetch the repo
+            success, message = self.scanner.fetch_repo(repo)
+            results[repo] = (success, message)
+
+        # Count results and collect failures
+        success_count = sum(1 for success, _ in results.values() if success)
+        fail_count = total - success_count
+        failures = [(repo, msg) for repo, (success, msg) in results.items() if not success]
+
+        # Update final message
+        if fail_count == 0:
+            final_message = (
+                f"[{self._get_timestamp()}] Fetch complete: {success_count} repos updated"
+            )
+        else:
+            # Show first few failures with error messages
+            error_details = "\n".join([f"  - {repo.name}: {msg}" for repo, msg in failures[:3]])
+            if fail_count > 3:
+                error_details += f"\n  ... and {fail_count - 3} more"
+            final_message = f"[{self._get_timestamp()}] Fetch complete: {success_count} succeeded, {fail_count} failed\n{error_details}"
+
+        self.call_from_thread(fetch_status.update, final_message)
+
+        # Trigger refresh from main thread
+        self.call_from_thread(self.action_refresh)
+
+        # Hide fetch status after 5 seconds
+        def hide_fetch_status() -> None:
+            fetch_status.styles.display = "none"
+
+        self.call_from_thread(self.set_timer, 5, hide_fetch_status)
+
+        return results
 
     def _show_repo_info(self, row_index: int) -> None:
         """Show repository info for the given row index."""
