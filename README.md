@@ -46,7 +46,7 @@ On first run, gitmon will automatically:
 ### Alternative: Install with pipx
 
 ```bash
-pipx install /path/to/gitmon
+pipx install git+https://github.com/raremonarch/gitmon.git
 ```
 
 ## Configuration
