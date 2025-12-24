@@ -1,9 +1,12 @@
 """Git repository scanner and information extractor."""
 
+import logging
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -82,9 +85,9 @@ class GitScanner:
 
                 if item.is_dir():
                     self._search_directory(item, repos, current_depth + 1)
-        except PermissionError:
+        except PermissionError as e:
             # Skip directories we can't access
-            pass
+            logger.debug(f"Permission denied accessing directory {directory}: {e}")
 
     def get_repo_info(self, repo_path: Path) -> RepoInfo:
         """Get detailed information about a git repository.
@@ -146,18 +149,30 @@ class GitScanner:
                 remote_commit_message=remote_commit_msg,
             )
 
-        except subprocess.TimeoutExpired:
+        except subprocess.TimeoutExpired as e:
+            logger.warning(f"Git command timeout for {repo_path}: {e}")
             return RepoInfo(
-                name=name,
+                name=repo_path.name,
                 path=repo_path,
                 remote_owner="N/A",
                 current_branch="N/A",
                 status="error",
                 error="Command timeout",
             )
-        except Exception as e:
+        except subprocess.CalledProcessError as e:
+            logger.error(f"Git command failed for {repo_path}: {e}")
             return RepoInfo(
-                name=name,
+                name=repo_path.name,
+                path=repo_path,
+                remote_owner="N/A",
+                current_branch="N/A",
+                status="error",
+                error=f"Git command failed: {e}",
+            )
+        except (OSError, PermissionError) as e:
+            logger.error(f"File system error accessing {repo_path}: {e}")
+            return RepoInfo(
+                name=repo_path.name,
                 path=repo_path,
                 remote_owner="N/A",
                 current_branch="N/A",
@@ -292,6 +307,7 @@ class GitScanner:
             Tuple of (success: bool, message: str)
         """
         try:
+            logger.debug(f"Fetching repository: {repo_path}")
             result = subprocess.run(
                 ["git", "fetch", "--all"],
                 cwd=repo_path,
@@ -301,14 +317,21 @@ class GitScanner:
             )
 
             if result.returncode == 0:
+                logger.debug(f"Successfully fetched {repo_path}")
                 return True, "Success"
             else:
                 error_msg = result.stderr.strip() or result.stdout.strip() or "Unknown error"
+                logger.warning(f"Failed to fetch {repo_path}: {error_msg}")
                 return False, error_msg
 
         except subprocess.TimeoutExpired:
+            logger.warning(f"Fetch timeout for {repo_path}")
             return False, "Timeout (30s)"
-        except Exception as e:
+        except (OSError, PermissionError) as e:
+            logger.error(f"File system error fetching {repo_path}: {e}")
+            return False, str(e)
+        except subprocess.CalledProcessError as e:
+            logger.error(f"Git fetch command failed for {repo_path}: {e}")
             return False, str(e)
 
     def fetch_all(self) -> dict[Path, tuple[bool, str]]:

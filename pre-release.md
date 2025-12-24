@@ -75,31 +75,32 @@ This document tracks all tasks needed to harden GitMon for a stable release. Ite
 - [x] Define `ConfigurationError(GitMonError)` for config issues
 - [x] Replace `ValueError` raises with `ConfigurationError`
 
-## Phase 3: Error Handling & Logging
+## Phase 3: Error Handling & Logging ✅ COMPLETED
 
-### Custom Exceptions (20 minutes)
+### Custom Exceptions
 
-- [ ] Create `exceptions.py` module
-- [ ] Define `GitMonError` base exception
-- [ ] Define `GitCommandError(GitMonError)` for git failures
-- [ ] Define `ConfigurationError(GitMonError)` for config issues
-- [ ] Replace `ValueError` raises with `ConfigurationError`
+- [x] Create `exceptions.py` module
+- [x] Define `GitMonError` base exception
+- [x] Define `GitCommandError(GitMonError)` for git failures
+- [x] Define `ConfigurationError(GitMonError)` for config issues
+- [x] Replace `ValueError` raises with `ConfigurationError`
 
-### Logging Setup (45 minutes)
+### Logging Setup
 
-- [ ] Add Python `logging` configuration to `__main__.py`
-- [ ] Replace bare `except Exception` in `tui.py:35` with specific exceptions
-- [ ] Add logging to `scanner.py` for git command failures
-- [ ] Add logging to `config.py` for file operations
-- [ ] Add `--verbose` / `--debug` CLI flag for log levels
-- [ ] Log to `~/.local/share/gitmon/gitmon.log` or similar
+- [x] Add Python `logging` configuration to `__main__.py`
+- [x] Replace bare `except Exception` in `tui.py` with specific exceptions
+- [x] Add logging to `scanner.py` for git command failures
+- [x] Add logging to `config.py` for file operations
+- [x] Add `--verbose` / `--debug` CLI flags for log levels
+- [x] Log to `~/.local/share/gitmon/gitmon.log`
 
-### Narrow Exception Handling (30 minutes)
+### Narrow Exception Handling
 
-- [ ] Review all `except Exception` clauses
-- [ ] Replace with specific exception types
-- [ ] Add proper error recovery or propagation
-- [ ] Ensure errors reach user with helpful messages
+- [x] Review all `except Exception` clauses
+- [x] Replace with specific exception types (except CLI entry point catch-all)
+- [x] Add proper error recovery or propagation
+- [x] Ensure errors reach user with helpful messages
+- [x] Add logging to all exception handlers
 
 ## Phase 4: Dependency Injection & Testability
 

@@ -1,11 +1,14 @@
 """Configuration file handling for gitmon."""
 
 import json
+import logging
 import os
 from pathlib import Path
 from typing import Any, Optional, cast
 
 from .exceptions import ConfigurationError
+
+logger = logging.getLogger(__name__)
 
 
 class Config:
@@ -30,10 +33,12 @@ class Config:
     def load(self) -> None:
         """Load configuration from file."""
         if not self.config_path.exists():
+            logger.info(f"Config file not found at {self.config_path}, creating default config")
             self._create_default_config()
             return
 
         try:
+            logger.debug(f"Loading configuration from {self.config_path}")
             with open(self.config_path) as f:
                 data: dict[str, Any] = json.load(f)
                 self.watch_directories = cast("list[str]", data.get("watch_directories", []))
@@ -41,8 +46,15 @@ class Config:
                 self.max_depth = cast("int", data.get("max_depth", 3))
                 self.auto_fetch_enabled = cast("bool", data.get("auto_fetch_enabled", False))
                 self.auto_fetch_interval = cast("int", data.get("auto_fetch_interval", 300))
-        except (OSError, json.JSONDecodeError) as e:
-            raise ConfigurationError(f"Error loading config from {self.config_path}: {e}") from e
+            logger.debug(
+                f"Successfully loaded configuration: {len(self.watch_directories)} watch directories"
+            )
+        except OSError as e:
+            logger.error(f"Failed to read config file {self.config_path}: {e}")
+            raise ConfigurationError(f"Error reading config from {self.config_path}: {e}") from e
+        except json.JSONDecodeError as e:
+            logger.error(f"Invalid JSON in config file {self.config_path}: {e}")
+            raise ConfigurationError(f"Invalid JSON in config file {self.config_path}: {e}") from e
 
         # Validate configuration values
         self._validate()
@@ -71,41 +83,55 @@ class Config:
 
     def _create_default_config(self) -> None:
         """Create default configuration file."""
-        self.config_path.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            logger.info(f"Creating default config at {self.config_path}")
+            self.config_path.parent.mkdir(parents=True, exist_ok=True)
 
-        default_config: dict[str, Any] = {
-            "watch_directories": [
-                str(Path.home() / "code"),
-            ],
-            "refresh_interval": 5,
-            "max_depth": 3,
-            "auto_fetch_enabled": False,
-            "auto_fetch_interval": 300,
-        }
+            default_config: dict[str, Any] = {
+                "watch_directories": [
+                    str(Path.home() / "code"),
+                ],
+                "refresh_interval": 5,
+                "max_depth": 3,
+                "auto_fetch_enabled": False,
+                "auto_fetch_interval": 300,
+            }
 
-        with open(self.config_path, "w") as f:
-            json.dump(default_config, f, indent=2)
+            with open(self.config_path, "w") as f:
+                json.dump(default_config, f, indent=2)
 
-        self.watch_directories = cast("list[str]", default_config["watch_directories"])
-        self.refresh_interval = cast("int", default_config["refresh_interval"])
-        self.max_depth = cast("int", default_config["max_depth"])
-        self.auto_fetch_enabled = cast("bool", default_config["auto_fetch_enabled"])
-        self.auto_fetch_interval = cast("int", default_config["auto_fetch_interval"])
+            self.watch_directories = cast("list[str]", default_config["watch_directories"])
+            self.refresh_interval = cast("int", default_config["refresh_interval"])
+            self.max_depth = cast("int", default_config["max_depth"])
+            self.auto_fetch_enabled = cast("bool", default_config["auto_fetch_enabled"])
+            self.auto_fetch_interval = cast("int", default_config["auto_fetch_interval"])
+
+            logger.info("Default config created successfully")
+        except (OSError, PermissionError) as e:
+            logger.error(f"Failed to create default config at {self.config_path}: {e}")
+            raise ConfigurationError(f"Failed to create default config: {e}") from e
 
     def save(self) -> None:
         """Save configuration to file."""
-        self.config_path.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            logger.debug(f"Saving configuration to {self.config_path}")
+            self.config_path.parent.mkdir(parents=True, exist_ok=True)
 
-        data = {
-            "watch_directories": self.watch_directories,
-            "refresh_interval": self.refresh_interval,
-            "max_depth": self.max_depth,
-            "auto_fetch_enabled": self.auto_fetch_enabled,
-            "auto_fetch_interval": self.auto_fetch_interval,
-        }
+            data = {
+                "watch_directories": self.watch_directories,
+                "refresh_interval": self.refresh_interval,
+                "max_depth": self.max_depth,
+                "auto_fetch_enabled": self.auto_fetch_enabled,
+                "auto_fetch_interval": self.auto_fetch_interval,
+            }
 
-        with open(self.config_path, "w") as f:
-            json.dump(data, f, indent=2)
+            with open(self.config_path, "w") as f:
+                json.dump(data, f, indent=2)
+
+            logger.debug("Configuration saved successfully")
+        except (OSError, PermissionError) as e:
+            logger.error(f"Failed to save config to {self.config_path}: {e}")
+            raise ConfigurationError(f"Failed to save config: {e}") from e
 
     def get_expanded_directories(self) -> list[Path]:
         """Get watch directories with environment variables expanded.

@@ -15,6 +15,11 @@ from textual.worker import Worker, WorkerState
 from .config import Config
 from .scanner import GitScanner, RepoInfo
 
+try:
+    from textual.timer import Timer
+except ImportError:
+    Timer = Any  # type: ignore
+
 
 def _simplify_fetch_error(error_msg: str) -> str:
     """Simplify fetch error messages into concise, user-friendly summaries.
@@ -81,7 +86,8 @@ class HoverableDataTable(DataTable[Any]):
                 self.post_message(self.RowHovered(row_index=relative_y))
             else:
                 self.post_message(self.RowHovered(row_index=-1))
-        except Exception:
+        except (AttributeError, ValueError, TypeError):
+            # Handle edge cases with mouse event coordinates
             self.post_message(self.RowHovered(row_index=-1))
 
     def on_leave(self, _event: Any) -> None:
@@ -113,7 +119,7 @@ class GitMonApp(App[None]):
         self.scanner = GitScanner(config.get_expanded_directories(), config.max_depth)
         self.repos: list[RepoInfo] = []
         self._fetch_worker: Optional[Worker[dict[Path, tuple[bool, str]]]] = None
-        self._auto_fetch_timer = None
+        self._auto_fetch_timer: Optional[Timer] = None
         self._fetch_results: dict[Path, tuple[bool, str]] = {}  # Track fetch status by repo path
 
     def compose(self) -> ComposeResult:
@@ -214,10 +220,7 @@ class GitMonApp(App[None]):
                     tracking_parts.append(Text(f"↓ {repo.behind}"))
 
             # Combine all parts with spacing
-            if tracking_parts:
-                tracking = Text("  ").join(tracking_parts)
-            else:
-                tracking = ""
+            tracking = Text("  ").join(tracking_parts) if tracking_parts else ""
 
             # Format repository with owner
             # Escape square brackets to prevent Rich markup interpretation
@@ -290,7 +293,9 @@ class GitMonApp(App[None]):
 
         # Update final message - keep it concise
         if fail_count == 0:
-            final_message = f"[{self._get_timestamp()}] Fetch complete: {success_count} repos updated"
+            final_message = (
+                f"[{self._get_timestamp()}] Fetch complete: {success_count} repos updated"
+            )
         else:
             final_message = (
                 f"[{self._get_timestamp()}] Fetch complete: {success_count} succeeded, {fail_count} failed "
@@ -321,7 +326,7 @@ class GitMonApp(App[None]):
         # Save updated config
         try:
             self.config.save()
-        except Exception as e:
+        except (OSError, PermissionError) as e:
             fetch_status = self.query_one("#fetch-status", Static)
             fetch_status.update(f"Error saving config: {e}")
             fetch_status.styles.display = "block"
