@@ -1,5 +1,6 @@
 """Textual TUI interface for gitmon."""
 
+import re
 from pathlib import Path
 from typing import Any, Optional
 
@@ -13,6 +14,51 @@ from textual.worker import Worker, WorkerState
 
 from .config import Config
 from .scanner import GitScanner, RepoInfo
+
+
+def _simplify_fetch_error(error_msg: str) -> str:
+    """Simplify fetch error messages into concise, user-friendly summaries.
+
+    Args:
+        error_msg: Raw error message from git fetch
+
+    Returns:
+        Simplified error message
+    """
+    error_lower = error_msg.lower()
+
+    # Extract SSH key name if present
+    key_match = re.search(r"no such identity: .*/([^/:\s]+)", error_msg)
+    if key_match:
+        key_name = key_match.group(1)
+        return f"SSH key '{key_name}' not found"
+
+    # Permission denied / auth failures
+    if "permission denied" in error_lower and "publickey" in error_lower:
+        return "SSH authentication failed"
+
+    # Could not read from remote
+    if "could not read from remote" in error_lower:
+        return "Cannot connect to remote"
+
+    # Timeout
+    if "timeout" in error_lower or "timed out" in error_lower:
+        return "Connection timeout"
+
+    # Network unreachable
+    if "network" in error_lower and "unreachable" in error_lower:
+        return "Network unreachable"
+
+    # Host key verification failed
+    if "host key verification failed" in error_lower:
+        return "Host key verification failed"
+
+    # Unknown host
+    if "could not resolve hostname" in error_lower or "unknown host" in error_lower:
+        return "Unknown host"
+
+    # Default: return first 60 chars if longer, otherwise full message
+    return error_msg if len(error_msg) <= 60 else error_msg[:57] + "..."
 
 
 class HoverableDataTable(DataTable[Any]):
@@ -213,8 +259,9 @@ class GitMonApp(App[None]):
             fetch_status.styles.display = "block"
             return
 
-        # Show fetch status widget and start the background fetch worker
+        # Clear and show fetch status widget, then start the background fetch worker
         fetch_status = self.query_one("#fetch-status", Static)
+        fetch_status.update("Starting fetch...")
         fetch_status.styles.display = "block"
         self._fetch_worker = self.run_worker(self._fetch_all_repos, thread=True)
 
@@ -237,22 +284,18 @@ class GitMonApp(App[None]):
             success, message = self.scanner.fetch_repo(repo_path)
             results[repo_path] = (success, message)
 
-        # Count results and collect failures
+        # Count results
         success_count = sum(1 for success, _ in results.values() if success)
         fail_count = total - success_count
-        failures = [(path, msg) for path, (success, msg) in results.items() if not success]
 
-        # Update final message
+        # Update final message - keep it concise
         if fail_count == 0:
-            final_message = (
-                f"[{self._get_timestamp()}] Fetch complete: {success_count} repos updated"
-            )
+            final_message = f"[{self._get_timestamp()}] Fetch complete: {success_count} repos updated"
         else:
-            # Show first few failures with error messages
-            error_details = "\n".join([f"  - {path.name}: {msg}" for path, msg in failures[:3]])
-            if fail_count > 3:
-                error_details += f"\n  ... and {fail_count - 3} more"
-            final_message = f"[{self._get_timestamp()}] Fetch complete: {success_count} succeeded, {fail_count} failed\n{error_details}"
+            final_message = (
+                f"[{self._get_timestamp()}] Fetch complete: {success_count} succeeded, {fail_count} failed "
+                f"(hover rows with ✗ for details)"
+            )
 
         self.call_from_thread(fetch_status.update, final_message)
 
@@ -353,7 +396,8 @@ class GitMonApp(App[None]):
             if success:
                 lines.append("Fetch Status: ✓ Success")
             else:
-                lines.append(f"Fetch Status: ✗ Failed - {error_msg}")
+                simplified_error = _simplify_fetch_error(error_msg)
+                lines.append(f"Fetch Status: ✗ {simplified_error}")
 
         hover_text = "\n".join(lines)
 
