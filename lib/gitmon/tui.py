@@ -121,8 +121,8 @@ class GitMonApp(App[None]):
         yield Header()
         yield Static(id="info-bar")
         yield HoverableDataTable()
-        yield Static(id="fetch-status")
         yield Static(id="hover-info")
+        yield Static(id="fetch-status")
         yield Footer()
 
     def on_mount(self) -> None:
