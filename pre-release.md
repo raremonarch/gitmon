@@ -120,31 +120,25 @@ This document tracks all tasks needed to harden GitMon for a stable release. Ite
 - [x] Ensure TUI methods can be tested without running full app
 - [x] Editor command configurable via `EDITOR` environment variable
 
-## Phase 5: Test Infrastructure
+## Phase 5: Test Infrastructure ✅ COMPLETED
 
-### Basic Setup (1 hour)
+### Basic Setup
 
-- [ ] Create `tests/` directory structure
-  - [ ] `tests/__init__.py`
-  - [ ] `tests/conftest.py`
-  - [ ] `tests/unit/__init__.py`
-  - [ ] `tests/integration/__init__.py`
-  - [ ] `tests/tui/__init__.py`
-- [ ] Add pytest configuration to `pyproject.toml`
-
-  ```toml
-  [tool.pytest.ini_options]
-  testpaths = ["tests"]
-  python_files = ["test_*.py"]
-  python_classes = ["Test*"]
-  python_functions = ["test_*"]
-  addopts = "-v --cov=gitmon --cov-report=term-missing"
-  ```
-
-- [ ] Create `tests/conftest.py` with common fixtures
-  - [ ] `tmp_git_repo` fixture for creating test repos
-  - [ ] `mock_config` fixture
-  - [ ] `mock_git_runner` fixture
+- [x] Create `tests/` directory structure
+  - [x] `tests/__init__.py`
+  - [x] `tests/conftest.py`
+  - [x] `tests/unit/__init__.py`
+  - [x] `tests/integration/__init__.py`
+  - [x] `tests/tui/__init__.py`
+- [x] Add pytest configuration to `pyproject.toml` (was already present from Phase 1)
+- [x] Create `tests/conftest.py` with common fixtures
+  - [x] `tmp_git_repo` fixture - creates temporary git repo with initial commit
+  - [x] `tmp_git_repo_with_remote` fixture - git repo with remote configured
+  - [x] `mock_config` fixture - Config object with test settings
+  - [x] `mock_git_runner` fixture - MockGitRunner with default responses
+  - [x] `mock_git_runner_with_changes` fixture - Simulates repo with changes
+- [x] Create `tests/test_fixtures.py` to verify fixtures work correctly
+- [x] All fixture tests passing
 
 ## Phase 6: Unit Tests - Config Module
 
