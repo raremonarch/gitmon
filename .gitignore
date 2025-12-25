@@ -8,6 +8,7 @@ __pycache__/
 *$py.class
 *.so
 .mypy_cache/
+.ruff_cache/
 
 # Testing
 .coverage
