@@ -140,31 +140,44 @@ This document tracks all tasks needed to harden GitMon for a stable release. Ite
 - [x] Create `tests/test_fixtures.py` to verify fixtures work correctly
 - [x] All fixture tests passing
 
-## Phase 6: Unit Tests - Config Module
+## Phase 6: Unit Tests - Config Module ✅ COMPLETED
 
-### Config Tests (2 hours)
+### Config Tests
 
-- [ ] Create `tests/unit/test_config.py`
-- [ ] Test default config creation
-  - [ ] Verify default file is created in correct location
-  - [ ] Verify default values are set correctly
-- [ ] Test config loading
-  - [ ] Test loading valid config file
-  - [ ] Test loading config with missing optional fields
-  - [ ] Test loading invalid JSON (should raise ConfigurationError)
-  - [ ] Test loading non-existent file (should create default)
-- [ ] Test config saving
-  - [ ] Verify JSON is written correctly
-  - [ ] Verify directory is created if missing
-- [ ] Test `get_expanded_directories()`
-  - [ ] Test tilde expansion (`~/code`)
-  - [ ] Test environment variable expansion (`$HOME/code`)
-  - [ ] Test filtering non-existent directories
-  - [ ] Test filtering non-directory paths
-- [ ] Test config validation
-  - [ ] Test negative `refresh_interval` raises error
-  - [ ] Test zero `max_depth` raises error
-  - [ ] Test invalid `watch_directories` type raises error
+- [x] Create `tests/unit/test_config.py` with comprehensive test coverage
+- [x] Test default config creation (3 tests)
+  - [x] Verify default file is created in correct location
+  - [x] Verify default values are set correctly
+  - [x] Verify parent directories are created
+  - [x] Verify valid JSON format
+- [x] Test config loading (4 tests)
+  - [x] Test loading valid config file
+  - [x] Test loading config with missing optional fields (uses defaults)
+  - [x] Test loading invalid JSON (raises ConfigurationError)
+  - [x] Test loading non-existent file (creates default)
+- [x] Test config saving (3 tests)
+  - [x] Verify JSON is written correctly with all fields
+  - [x] Verify directory is created if missing
+  - [x] Verify save overwrites existing file
+- [x] Test `get_expanded_directories()` (5 tests)
+  - [x] Test tilde expansion (`~/code` → `/home/user/code`)
+  - [x] Test environment variable expansion (`$HOME/code`)
+  - [x] Test filtering non-existent directories
+  - [x] Test filtering non-directory paths (files)
+  - [x] Test handling empty watch_directories list
+- [x] Test config validation (7 tests)
+  - [x] Test negative `refresh_interval` raises error
+  - [x] Test zero `refresh_interval` raises error
+  - [x] Test zero `max_depth` raises error
+  - [x] Test negative `max_depth` raises error
+  - [x] Test invalid `watch_directories` type raises error
+  - [x] Test `auto_fetch_interval` < 60 raises error
+  - [x] Test valid configuration passes all validation
+
+**Results:**
+- 22 tests passing ✅
+- 90% code coverage of config.py
+- Only uncovered lines are OS error edge cases (hard to test)
 
 ## Phase 7: Unit Tests - Scanner Module
 
