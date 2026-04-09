@@ -16,6 +16,7 @@ from textual.worker import Worker, WorkerState
 
 from .config import Config
 from .scanner import GitScanner, RepoInfo
+from .ssh import get_keys_needing_load, get_ssh_hosts_for_repos, is_ssh_agent_running, ssh_add_keys
 
 try:
     from textual.timer import Timer
@@ -160,6 +161,8 @@ class GitMonApp(App[None]):
             self._auto_fetch_timer = self.set_interval(
                 self.config.auto_fetch_interval, self.action_fetch
             )
+            # Ensure SSH keys are loaded before the first fetch
+            self._ensure_ssh_keys()
             # Trigger an immediate fetch on startup to populate status indicators
             self.action_fetch()
 
@@ -348,6 +351,9 @@ class GitMonApp(App[None]):
             # Refresh display first to show new status
             self.action_refresh()
 
+            # Ensure SSH keys are loaded before fetching
+            self._ensure_ssh_keys()
+
             # Trigger an immediate fetch to populate status indicators
             self.action_fetch()
         else:
@@ -370,6 +376,41 @@ class GitMonApp(App[None]):
                 fetch_status.styles.display = "none"
 
             self.set_timer(3, hide_notification)
+
+    def _ensure_ssh_keys(self) -> None:
+        """Ensure SSH keys are loaded for all repos that use SSH remotes.
+
+        If any keys are missing from the agent, suspends the TUI and runs
+        ssh-add interactively so the user can enter passphrases. Mirrors the
+        pattern used by action_open_config.
+        """
+        if not is_ssh_agent_running():
+            fetch_status = self.query_one("#fetch-status", Static)
+            fetch_status.update("Warning: SSH agent not running — fetches may fail for SSH repos")
+            fetch_status.styles.display = "block"
+            self.set_timer(5, lambda: setattr(fetch_status.styles, "display", "none"))
+            return
+
+        repo_paths = self.scanner.find_repositories()
+        hosts = get_ssh_hosts_for_repos(repo_paths)
+        if not hosts:
+            return
+
+        keys_needed = get_keys_needing_load(hosts)
+        if not keys_needed:
+            return
+
+        host_names = [h for h, _ in keys_needed]
+        key_paths = [kp for _, kp in keys_needed]
+
+        with self.suspend():
+            print(f"\nSSH keys needed for: {', '.join(host_names)}")
+            print("Please enter passphrases when prompted.\n")
+            results = ssh_add_keys(key_paths)
+            failed = [str(kp.name) for kp, ok in results.items() if not ok]
+            if failed:
+                print(f"\nWarning: failed to add: {', '.join(failed)}")
+            print("\nReturning to GitMon...")
 
     def _show_repo_info(self, row_index: int) -> None:
         """Show repository info for the given row index."""
